@@ -5,11 +5,21 @@ import numpy as np
 from lmfit import models
 from pathlib import Path
 from astropy.io import fits
+import scipy.constants as sc
+import astropy.constants as ac
 
 def pixels_to_wavelenghts(pixel, slope, intercept):
+    '''
+    This function converts pixel values to wavelengths using a linear model to be determined by a fit.
+    '''
     return slope * pixel + intercept
 
 def import_files(path, filename):
+    '''
+    Import files in the syntax that I used in the notebook. That is, choose the path that contains
+    all the fit files, then for the filename choose something like bias* to obtain all bias files
+    as a dictionary that can be accessed by filename 
+    '''
     files =  [ p for p in Path(path).glob(filename) ]
     file_dict = dict()
     for file in files:
@@ -31,7 +41,11 @@ def get_effective_temperature(wavelength_peak):
 def stack(values):
     return  np.median( [ x for x in values ], axis=0 )
 
-df_fl = pd.read_csv('fraunhofer_lines.csv')
+def planck_scaled(temperature, wavelength):
+    return (S := ( ( ( ac.R_sun / ac.au ) ** 2 )  *  ( 2 * sc.Planck * sc.speed_of_light ** 2 ) /
+        ( (wavelength**5) * ( np.exp( ( sc.Planck * sc.speed_of_light) / ( wavelength * sc.k * temperature ) ) - 1 ) ) ) )
+
+df_fl = pd.read_csv('./data/fraunhofer_lines.csv')
 df_fl.keys()
 
 #plt.xlabel('pixel')
@@ -40,12 +54,10 @@ df_fl.keys()
 #plt.figure()
 
 model = models.LinearModel()
-fit = model.fit(x=df_fl['pixel'], data=df_fl['wavelength'])
-#print(fit.params['slope'])
-#print(fit.params['intercept'])
-#fit.plot(xlabel='pixel', ylabel='Wavelength (nm)')
-
-
+fit_pixel_wavelength = model.fit(x=df_fl['pixel'], data=df_fl['wavelength'])
+#print(fit_pixel_wavelength.params['slope'])
+#print(fit_pixel_wavelength.params['intercept'])
+#fit_pixel_wavelength.plot(xlabel='pixel', ylabel='Wavelength (nm)')
 
 flat_dict, flat_headers = import_files(
     "C:/Users/bvptr/academia/physics/year2/natuurkunde_en_sterrenkunde_practicum2/solar_physics_non_git/solar_physics_data/NP2 zonnefysica/20211112 - LISA daglicht spectra/" ,
@@ -91,19 +103,24 @@ spectrum = np.median(calibrated[300:800], axis=0)
 #spectrum = np.median(light_stack[300:800], axis=0)
 
 # We now convert the pixel values of the spectrum to wavelengths
-wavelengths = pixels_to_wavelenghts(range(len(spectrum)), fit.values['slope'], fit.values['intercept'])
+wavelengths = pixels_to_wavelenghts(range(len(spectrum)), fit_pixel_wavelength.values['slope'], fit_pixel_wavelength.values['intercept'])
 
-# quick check
+# crude method to determine effective temperature.
 T_accepted = 5772
-print(wavelength_peak := get_peak_wavelength(wavelengths, spectrum))
-print(T_eff := get_effective_temperature(wavelength_peak))
-print("%f%% error from the accepted value." % float( ( T_eff / T_accepted ) * 100 - 100) ) 
+print(wavelength_peak := get_peak_wavelength(wavelengths, spectrum)) # 481.6998282285298
+print(T_eff := get_effective_temperature(wavelength_peak)) # 6015.72137913495
+print("%f%% error from the accepted value." % float( ( T_eff / T_accepted ) * 100 - 100) ) #4.22% error
 
-# 481.6998282285298
-# 6015.72137913495
-# Gives an error of 
+#plt.xlabel('wavelength (nm)')
+#plt.ylabel('intensity (counts)')
+#plt.plot(wavelengths, spectrum)
 
-plt.xlabel('wavelength (nm)')
-plt.ylabel('intensity (counts)')
-plt.plot(wavelengths, spectrum)
-#plt.show()
+# fitting
+print(type(list(spectrum)))
+print(type(wavelengths))
+f = lambda T, wvlen :  ( ( ac.R_sun / ac.au ) ** 2 )  *  ( 2 * sc.Planck * sc.speed_of_light ** 2 ) / \
+    ( (wvlen**5) * ( np.exp( ( sc.Planck * sc.speed_of_light) / ( wvlen * sc.k * T ) ) - 1 ) )  
+model_planck_scaled = models.Model(f, name="Planck_scaled")
+fit_planck_scaled = model_planck_scaled.fit(list(spectrum), wvlen=list(wavelengths), temperature=T_accepted)
+fit_planck_scaled.plot(xlabel="$\lambda$ (nm)", ylabel="Spectral irradiance")
+plt.show()
