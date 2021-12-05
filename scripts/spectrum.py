@@ -116,11 +116,13 @@ print("%f%% error from the accepted value." % float( ( T_eff / T_accepted ) * 10
 #plt.plot(wavelengths, spectrum)
 
 # fitting
-print(type(list(spectrum)))
-print(type(wavelengths))
-f = lambda T, wvlen :  ( ( ac.R_sun / ac.au ) ** 2 )  *  ( 2 * sc.Planck * sc.speed_of_light ** 2 ) / \
-    ( (wvlen**5) * ( np.exp( ( sc.Planck * sc.speed_of_light) / ( wvlen * sc.k * T ) ) - 1 ) )  
-model_planck_scaled = models.Model(f, name="Planck_scaled")
-fit_planck_scaled = model_planck_scaled.fit(list(spectrum), wvlen=list(wavelengths), temperature=T_accepted)
-fit_planck_scaled.plot(xlabel="$\lambda$ (nm)", ylabel="Spectral irradiance")
-plt.show()
+#f = lambda T, wvlen :  ( ( ac.R_sun / ac.au ) ** 2 )  *  ( 2 * sc.Planck * sc.speed_of_light ** 2 ) / \
+#    ( (wvlen**5) * ( np.exp( ( sc.Planck * sc.speed_of_light) / ( wvlen * sc.k * T ) ) - 1 ) )  
+#model_planck_scaled = models.Model(f, name="Planck_scaled")
+#fit_planck_scaled = model_planck_scaled.fit(list(spectrum), wvlen=list(wavelengths), temperature=T_accepted)
+#fit_planck_scaled.plot(xlabel="$\lambda$ (nm)", ylabel="Spectral irradiance")
+#plt.show()
+
+# save to csv for fitting in MMA.
+df = pd.DataFrame({'spectral irradiance' : spectrum, 'wavelength' : wavelengths})
+df.to_csv("./data/to_fit.csv")
