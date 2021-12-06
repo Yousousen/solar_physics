@@ -1,3 +1,4 @@
+# DEPRICATED
 import os
 import matplotlib.pyplot as plt 
 import pandas as pd
@@ -86,20 +87,18 @@ bias_dict, bias_headers = import_files(
 #)
 
 light_stack = stack( light_dict.values() )
-flat_stack = stack( flat_dict.values() )
-dark_stack = stack( dark_dict.values() )
-bias_stack = stack( bias_dict.values() )
+bias_master = stack( bias_dict.values() )
 
 # NOTE: Dark is currently broken (it has a neon frame through it) so we ignore it.
 # TODO: mean or sum or median? I currently don't konw what difference it makes.
 #dark_master = np.median(dark_stack)
-bias_master = np.median(bias_stack)
-flat_master = np.median([flat - bias_master for flat in flat_stack ])
+flat_master = stack( [flat - bias_master for flat in flat_dict.values() ] )
+flat_master = flat_master / np.median(flat_master)
 calibrated = [ (light - bias_master) / flat_master for light in light_stack ]
 
 # For some reason when we use this spectrum we only get what we expect if we take only part of it.
 # Currently the subtraction of bias and flat does nothing.
-spectrum = np.median(calibrated[300:800], axis=0)
+spectrum = np.median(calibrated[:], axis=0)
 #spectrum = np.median(light_stack[300:800], axis=0)
 
 # We now convert the pixel values of the spectrum to wavelengths
@@ -114,6 +113,14 @@ print("%f%% error from the accepted value." % float( ( T_eff / T_accepted ) * 10
 #plt.xlabel('wavelength (nm)')
 #plt.ylabel('intensity (counts)')
 #plt.plot(wavelengths, spectrum)
+
+light_sum = np.sum( light_stack, axis=0)
+calibrated_sum = np.sum(calibrated, axis=0)
+
+plt.plot(wavelengths,  light_sum / np.max(light_sum))
+#plt.figure()
+plt.plot(wavelengths, calibrated_sum / np.max(calibrated_sum))
+plt.show()
 
 # fitting
 #f = lambda T, wvlen :  ( ( ac.R_sun / ac.au ) ** 2 )  *  ( 2 * sc.Planck * sc.speed_of_light ** 2 ) / \
